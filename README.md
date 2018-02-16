@@ -18,9 +18,10 @@ const opint = require('opint-for-google-cloud');
         filter,
         keymap = (op)=>(op.targetLink.split("/").pop()),
         eventmap = (op)=>([{ event: op.operationType, time: new Date(op.insertTime).toUTCString() }]),
-	maxResults = 500,
-	eventz,
-        dict}).then(...)
+        maxResults = 500,
+        eventz,
+        dict
+     }).then(...)
 	
 Required parameters:
 * `zones` an array of Google Cloud Platform zones, in short format, such as `['us-east1-c','us-west1-a']`
