@@ -74,7 +74,7 @@ The goal of the example is to create a basic bare bones report of a system that 
 We have a SaaS web site running on Google Cloud that does some extensive computing on demand. We use one VM per customer 
 computing job. Each job is given a `jobid`.  Customer calculations are run by Google Compute Engine VMs 
 that are named `ourjobs-${jobid}` and when these VMs finish the calculation is saved in a similarly named named
-`/path/to/customer/${customer}/${jobid}` cloud storage file in bucket 'ourbucket'. 
+`/path/to/customer/${customer}/${jobid}.zip` cloud storage file in bucket 'ourbucket'. 
 
 When the customer has received the file, we create a datestamp in a metadata key called delivered. 
 
