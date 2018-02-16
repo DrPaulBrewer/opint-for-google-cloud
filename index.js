@@ -14,6 +14,7 @@ function fromOps({
     keymap = (op)=>(op.targetLink.split("/").pop()),
     eventmap = (op)=>([{ event: op.operationType, time: new Date(op.insertTime).toUTCString() }]),
     maxResults = 500,
+    eventz,
     dict}){
     if (!dict) dict = {};
     const compute = new Compute();
@@ -39,6 +40,8 @@ function fromOps({
 		 if (!dict[key])
 		     dict[key] = { key, zone, events:[]};
 		 [].push.apply(dict[key].events, eventmap(op));
+		 if (eventz)
+		     dict[key].events.sort((a,b)=>(eventz(a)-eventz(b)));
 	     }
 	 }
 	 return dict;
@@ -48,7 +51,7 @@ function fromOps({
 
 module.exports.fromOps = fromOps;
 
-function fromStorage({bucket, prefix, maxResults=500, filter, keymap, eventmap, dict}){
+function fromStorage({bucket, prefix, maxResults=500, filter, keymap, eventmap, eventz, dict}){
     if (dict===undefined) dict = {};
     return (
 	storage
@@ -65,6 +68,8 @@ function fromStorage({bucket, prefix, maxResults=500, filter, keymap, eventmap, 
 				if (!dict[key])
 				    dict[key] = { key, events: [] };
 				[].push.apply(dict[key].events, eventmap(f));
+				if (eventz)
+				    dict[key].events.sort((a,b)=>(eventz(a)-eventz(b)));
 			    }
 			}
 		    }
