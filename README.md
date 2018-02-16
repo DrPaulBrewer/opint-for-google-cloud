@@ -13,12 +13,12 @@ const opint = require('opint-for-google-cloud');
 
 What follows below is pretty rough, and you may be better informed by reading the source code.
 
-```opint.fromOps({
-    zones,
-    filter,
-    keymap = (op)=>(op.targetLink.split("/").pop()),
-    eventmap = (op)=>([{ event: op.operationType, time: new Date(op.insertTime).toUTCString() }]),
-    dict}).then(...)```
+    opint.fromOps({
+        zones,
+        filter,
+        keymap = (op)=>(op.targetLink.split("/").pop()),
+        eventmap = (op)=>([{ event: op.operationType, time: new Date(op.insertTime).toUTCString() }]),
+        dict}).then(...)
 	
 returns Promise, by default resolves to `{ vmname: { zone: 'us-east4-a', events: [ event1, event2, ... ] }, ... }`
 
