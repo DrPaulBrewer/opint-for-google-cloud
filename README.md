@@ -160,10 +160,10 @@ We track all of this with the following report generator, based on `opint-for-go
       return (o && o.targetLink && o.targetLink.includes("/instances/ourjobs-"));
     }
     function bucketFilter(f){
-        // our bucket files always have 5 /'s like path/to/customer/fred/12318312793.zip
+        // our bucket files always have 4 /'s like path/to/customer/fred/12318312793.zip
 	// and the jobid is the last element
-                    const levels = (f && f.name && f.name.split("/").length);
-                    return ((levels===5) && (f.name.endsWith(".zip")));
+         const levels = (f && f.name && f.name.split("/").length);
+         return ((levels===5) && (f.name.endsWith(".zip")));
     }
     function bucketKeymap(f){
        return ('ourjobs-'+(f.name.split("/").pop().toLowerCase().replace(".zip","")));
