@@ -63,11 +63,134 @@ Promise resolution:
 The promise resolves to an object with keys defined by keymap and values that are objects containing
 the grouping key, the zone and an array of events.  
 
-returns Promise, by resolves to `{ yourkey: { key: yourkey, events: [event1, event2, ...] }, ... }
-
 ## Full example
 
-To do when I have some time.
+### Example Goal
+
+The goal of the example is to create a basic bare bones report of a system that processes customer jobs on Google Cloud VMs. This is based on an actual system.  Some details about the system have been changed for this example.
+
+#### Example System
+
+We have a SaaS web site running on Google Cloud that does some extensive computing on demand. We use one VM per customer 
+computing job. Each job is given a `jobid`.  Customer calculations are run by Google Compute Engine VMs 
+that are named `ourjobs-${jobid}` and when these VMs finish the calculation is saved in a similarly named named
+`/path/to/customer/${customer}/${jobid}` cloud storage file in bucket 'ourbucket'. 
+
+When the customer has received the file, we create a datestamp in a metadata key called delivered. 
+
+To keep costs down, we sometimes use preemptible instances.  These are VMs that cost ~80% less, but are part of 
+excess supply at Google and can be reassigned at any time.
+
+#### Desired Output
+
+We want the Google Cloud Storage files to generate 'saved' and 'delivered' events.
+
+We want the operations log to generate VM events like 'insert', 'guestTerminate', 'preempted', 'delete'.
+
+We would like the output to look like this: 
+
+```json
+[                                                                                                                                                                                       
+    {                                                                                                                                                                                           
+        "key": "ourjobs-20180214t092541",                                                                                                                                                       
+        "zone": "us-east4-b",                                                                                                                                                                   
+        "events": [                                                                                                                                                                             
+            {                                                                                                                                                                                   
+                "event": "delete",                                                                                                                                                              
+                "time": "Wed, 14 Feb 2018 10:28:55 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "compute.instances.guestTerminate",                                                                                                                                    
+                "time": "Wed, 14 Feb 2018 09:46:24 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "delivered",                                                                                                                                                           
+                "time": "Wed, 14 Feb 2018 09:46:22 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "saved",                                                                                                                                                               
+                "time": "Wed, 14 Feb 2018 09:45:59 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "insert",                                                                                                                                                              
+                "time": "Wed, 14 Feb 2018 09:26:02 GMT"                                                                                                                                         
+            }                                                                                                                                                                                   
+        ]                                                                                                                                                                                       
+    },                                                                                                                                                                                          
+    {                                                                                                                                                                                           
+        "key": "ourjobs-20180213t071125",                                                                                                                                                       
+        "zone": "us-east4-b",                                                                                                                                                                   
+        "events": [                                                                                                                                                                             
+            {                                                                                                                                                                                   
+                "event": "delete",                                                                                                                                                              
+                "time": "Tue, 13 Feb 2018 08:13:13 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "delivered",                                                                                                                                                           
+                "time": "Tue, 13 Feb 2018 07:22:47 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "compute.instances.guestTerminate",                                                                                                                                    
+                "time": "Tue, 13 Feb 2018 07:22:10 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "saved",                                                                                                                                                               
+                "time": "Tue, 13 Feb 2018 07:21:45 GMT"                                                                                                                                         
+            },                                                                                                                                                                                  
+            {                                                                                                                                                                                   
+                "event": "insert",                                                                                                                                                              
+                "time": "Tue, 13 Feb 2018 07:11:41 GMT"                                                                                                                                         
+            }                                                                                                                                                                                   
+        ]                                                                                                                                                                                       
+    },                    
+...
+]
+```
+
+### Example Solution
+
+We track all of this with the following report generator, based on `opint-for-google-cloud`
+
+```javascript
+   function generateTheReport(reply, sanitize){
+    const zones = ['us-west1-b','us-east4-b'];
+    const bucket = 'our-bucket';
+    function opsFilter(o){
+      return (o && o.targetLink && o.targetLink.includes("/instances/ourjobs-"));
+    }
+    function bucketFilter(f){
+        // our bucket files always have 5 /'s like path/to/customer/fred/12318312793.zip
+	// and the jobid is the last element
+                    const levels = (f && f.name && f.name.split("/").length);
+                    return ((levels===5) && (f.name.endsWith(".zip")));
+    }
+    function bucketKeymap(f){
+       return ('ourjobs-'+(f.name.split("/").pop().toLowerCase().replace(".zip","")));
+    }
+    function bucketEvents(f){
+        const events = [];
+        if (f && f.metadata && f.metadata.timeCreated)
+           events.unshift({ event: 'saved', time: new Date(f.metadata.timeCreated).toUTCString() });
+        if (f && f.metadata && f.metadata.metadata && f.metadata.metadata.delivered)
+           events.unshift({ event: 'delivered', time: new Date(f.metadata.metadata.delivered).toUTCString() });
+        return events;
+    }
+    function eventz(event){
+        if (!event.time) return 0;
+        return -(new Date(event.time)); // reverse chronological order
+    }
+    (opint
+      .fromOps({
+                 zones,
+                 filter: opsFilter,
+                 eventz
+                })
+       .then((instances)=>(opint.fromStorage({bucket, filter: bucketFilter, keymap: bucketKeymap, eventmap: bucketEvents, eventz, dict: instances })))
+       .then((instances)=>(Object.keys(instances).sort().reverse().map((i)=>(instances[i]))))
+       .then((report)=>(reply(sanitize(report))))
+     );
+    }
+```    
 
 ## Copyright
 
