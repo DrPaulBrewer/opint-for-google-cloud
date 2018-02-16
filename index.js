@@ -26,7 +26,7 @@ function fromOps({
 		.then((ops)=>{ if (filter) return ops.filter(filter); return ops; })
 	       );
     }
-    (Promise.all(zones.map(opsByZone))
+    return (Promise.all(zones.map(opsByZone))
      .then((allOps)=>{
 	 // to merge array-of-arrays see Gumbo's answer at https://stackoverflow.com/a/10865042/103081
 	 const merged = [].concat.apply([], allOps);
@@ -43,7 +43,7 @@ function fromOps({
 	 }
 	 return dict;
      })
-    );
+	   );
 }
 
 module.exports.fromOps = fromOps;
