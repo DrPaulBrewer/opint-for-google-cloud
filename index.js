@@ -24,12 +24,12 @@ function scanItemsAddEventsToDict({ dict, filter, init = (key)=>({ key, events:[
 			    if (!dict[key])
 				dict[key] = init(key, f);
 			    [].push.apply(dict[key].events, eventmap(f));
-			    if (eventz)
-				dict[key].events.sort(sorter);
 			}
 		    }
 		}
 	    }
+	    if (eventz)
+		Object.keys(dict).forEach((k)=>(dict[k].events.sort(sorter)));
 	    return dict;
 	} else {
 	    throw new Error("opint.scanItemsAddEventsToDict expected array of items, got: "+typeof(items));
@@ -53,13 +53,14 @@ function fromOps({
 		.getOperations({ maxResults, orderBy: 'insertTime desc'})
 		.then((resp)=>(resp[0]))
 		.then((ops)=>(ops.map((o)=>(o && o.metadata))))
+		.then((ops)=>(ops.filter((o)=>(o && (!filter || filter(o))))))
 	       );
     }
     function init(key, op){
 	const zone = (op && op.zone && op.zone.split("/").pop());
 	return { key, zone, events:[] };
     }
-    const scanItems = scanItemsAddEventsToDict({ dict, filter, init, keymap, eventmap, eventz });
+    const scanItems = scanItemsAddEventsToDict({ dict, init, keymap, eventmap, eventz });
     // to merge array-of-arrays with [].concat.apply see Gumbo's answer at https://stackoverflow.com/a/10865042/103081
     return (
 	Promise
