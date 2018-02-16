@@ -8,6 +8,35 @@
 const Compute = require('@google-cloud/compute');
 const storage = require('@google-cloud/storage')();
 
+function scanItemsAddEventsToDict({ dict, filter, init = (key)=>({ key, events:[] }), keymap, eventmap, eventz }){
+    function sorter(a,b){
+	return eventz(a)-eventz(b);
+    }
+    return function(items){
+	if (Array.isArray(items)){
+	    for(let i=0,l=items.length; i<l; ++i){
+		const f = items[i];
+		if (!filter || filter(f)){
+		    const key = keymap(f);
+		    if (key){
+			const events = eventmap(f);
+			if ((Array.isArray(events)) && (events.length)){
+			    if (!dict[key])
+				dict[key] = init(key, f);
+			    [].push.apply(dict[key].events, eventmap(f));
+			    if (eventz)
+				dict[key].events.sort(sorter);
+			}
+		    }
+		}
+	    }
+	    return dict;
+	} else {
+	    throw new Error("opint.scanItemsAddEventsToDict expected array of items, got: "+typeof(items));
+	}
+    };
+}
+
 function fromOps({
     zones,
     filter,
@@ -24,59 +53,33 @@ function fromOps({
 		.getOperations({ maxResults, orderBy: 'insertTime desc'})
 		.then((resp)=>(resp[0]))
 		.then((ops)=>(ops.map((o)=>(o && o.metadata))))
-		.then((ops)=>{ if (filter) return ops.filter(filter); return ops; })
 	       );
     }
-    return (Promise.all(zones.map(opsByZone))
-     .then((allOps)=>{
-	 // to merge array-of-arrays see Gumbo's answer at https://stackoverflow.com/a/10865042/103081
-	 const merged = [].concat.apply([], allOps);
-	 merged.sort((a,b)=>((+new Date(b.insertTime || 0))-(+new Date(a.insertTime || 0))));
-	 for(var i=0,l=merged.length; i<l; ++i){
-	     const op = merged[i];
-	     const key = keymap(op);
-	     if (key){
-		 const zone = op.zone.split("/").pop();
-		 if (!dict[key])
-		     dict[key] = { key, zone, events:[]};
-		 [].push.apply(dict[key].events, eventmap(op));
-		 if (eventz)
-		     dict[key].events.sort((a,b)=>(eventz(a)-eventz(b)));
-	     }
-	 }
-	 return dict;
-     })
-	   );
+    function init(key, op){
+	const zone = (op && op.zone && op.zone.split("/").pop());
+	return { key, zone, events:[] };
+    }
+    const scanItems = scanItemsAddEventsToDict({ dict, filter, init, keymap, eventmap, eventz });
+    // to merge array-of-arrays with [].concat.apply see Gumbo's answer at https://stackoverflow.com/a/10865042/103081
+    return (
+	Promise
+	    .all(zones.map(opsByZone))
+	    .then((allOps)=>([].concat.apply([], allOps)))
+	    .then(scanItems)
+    );
 }
 
 module.exports.fromOps = fromOps;
 
 function fromStorage({bucket, prefix, maxResults=500, filter, keymap, eventmap, eventz, dict}){
     if (dict===undefined) dict = {};
+    const scanItems = scanItemsAddEventsToDict({ dict, filter, keymap, eventmap, eventz});
     return (
 	storage
 	    .bucket(bucket)
 	    .getFiles({maxResults, prefix})
 	    .then((a)=>(a[0]))
-	    .then((files)=>{
-		if (Array.isArray(files)){
-		    for(let i=0,l=files.length; i<l; ++i){
-			let f = files[i];
-			if (!filter || filter(f)){
-			    let key = keymap(f);
-			    if (key){
-				if (!dict[key])
-				    dict[key] = { key, events: [] };
-				[].push.apply(dict[key].events, eventmap(f));
-				if (eventz)
-				    dict[key].events.sort((a,b)=>(eventz(a)-eventz(b)));
-			    }
-			}
-		    }
-		    return dict;
-		}
-		throw new Error("storageint expected array of Google Cloud Storage files, got: "+typeof(files));
-	    })
+	    .then(scanItems)
     );
 }
 
