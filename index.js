@@ -41,7 +41,12 @@ function fromOps({
     zones,
     filter,
     keymap = (op)=>(op.targetLink.split("/").pop()),
-    eventmap = (op)=>([{ event: op.operationType, time: new Date(op.insertTime).toUTCString(), status: op.statusMessage }]),
+    eventmap = (op)=>([{
+	event: op.operationType,
+	time: new Date(op.insertTime).toUTCString(),
+	status: op.statusMessage,
+	errors: (op.error && op.error.errors) 
+    }]),
     maxResults = 500,
     eventz,
     dict}){

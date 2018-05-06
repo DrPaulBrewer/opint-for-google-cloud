@@ -17,7 +17,7 @@ const opint = require('opint-for-google-cloud');
         zones,
         filter,
         keymap = (op)=>(op.targetLink.split("/").pop()),
-        eventmap = (op)=>([{ event: op.operationType, time: new Date(op.insertTime).toUTCString() }]),
+        eventmap = (op)=>([{ event: op.operationType, time: new Date(op.insertTime).toUTCString(), status: op.statusMessage, errors: (op.error && op.errors) }]),
         maxResults = 500,
         eventz,
         dict
@@ -26,10 +26,12 @@ const opint = require('opint-for-google-cloud');
 Required parameters:
 * `zones` an array of Google Cloud Platform zones, in short format, such as `['us-east1-c','us-west1-a']`
 
+The properties of `op` may be documented in [Google Compute Engine[tm] REST zoneOperation](https://cloud.google.com/compute/docs/reference/rest/v1/zoneOperations)
+
 Optional parameters:
 * `filter` a `function(op){ ... }` where `op` is an GCP Operation metadata object, that returns true if the op should be included. The default is include all. 
 * `keymap` a `function(op){ return key; }` where `op` is a GCP Operation metadata object, and the return `key:string` is used to group GCP Operations for reporting.  The default `keymap` extracts virtual machine name.
-* `eventmap` a `function(op){ return arrayOfEvents; }` where `op` is a GCP Operation metadata object, and the return is an array of event objects for reporting.   The default `eventmap` extracts the Operation type (typically: insert, delete, compute.instances.guestTerminate, compute.instances.preempt), status,  and the current time 
+* `eventmap` a `function(op){ return arrayOfEvents; }` where `op` is a GCP Operation metadata object, and the return is an array of event objects for reporting.   The default `eventmap` extracts the Operation type (typically: insert, delete, compute.instances.guestTerminate, compute.instances.preempt), any status message, any errors, and the operation initiation time 
 * `eventz` a `function(event){ return numberForSorting; }` custom sorting function for events applied after each insert in an existing grouping of events.  The default is no sorting.
 * `dict` an Object to merge new data into.  Default is to create an empty `{}`
 * `maxResults` (default: 500) limit passed to `compute.zone(zones).getOperations()`.  The GCP API limit seems to be lower.
