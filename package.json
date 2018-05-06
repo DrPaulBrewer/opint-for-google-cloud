@@ -1,6 +1,6 @@
 {
   "name": "opint-for-google-cloud",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "merge and reformat vm operations or file bucket metadata into operational intelligence",
   "main": "index.js",
   "scripts": {
