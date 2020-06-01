@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/DrPaulBrewer/opint-for-google-cloud#readme",
   "dependencies": {
-    "@google-cloud/compute": "^0.9.0",
+    "@google-cloud/compute": "^0.12.0",
     "@google-cloud/storage": "^1"
   }
 }
