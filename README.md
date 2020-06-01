@@ -2,6 +2,11 @@
 
 merge and reformat vm operations or file bucket metadata into operational intelligence
 
+## Currently Unmaintained
+
+We're not using this currently.  Some of the Google Cloud Dependencies need major updates and may necessitate
+minor changes to this code.  
+
 ## Foreword
 
 This software was designed to solve a particular problem reorganizing Google Cloud Platform data. If you find this software useful for your problem,
